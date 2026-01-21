@@ -1,0 +1,86 @@
+[
+  {
+    "id": "1",
+    "title": "E-Commerce Redesign",
+    "category": "UI Design",
+    "description": "Complete redesign of an online fashion store with focus on user experience and conversion optimization.",
+    "image": "/images/projects/ecommerce.jpg",
+    "slug": "ecommerce-redesign",
+    "fullDescription": "This project involved a complete overhaul of an existing e-commerce platform. The main goals were to improve the user experience, increase conversion rates, and create a modern, visually appealing interface. We conducted extensive user research and A/B testing to ensure the new design met user needs.",
+    "tags": ["UI/UX", "E-Commerce", "Mobile"],
+    "year": "2024",
+    "client": "Fashion Boutique"
+  },
+  {
+    "id": "2",
+    "title": "Brand Identity - Tech Startup",
+    "category": "Branding",
+    "description": "Full brand identity design including logo, color palette, typography, and brand guidelines for a SaaS startup.",
+    "image": "/images/projects/branding.jpg",
+    "slug": "tech-startup-branding",
+    "fullDescription": "Created a complete brand identity system for a technology startup specializing in AI solutions. The brand needed to convey innovation, trust, and approachability while standing out in a crowded market.",
+    "tags": ["Branding", "Logo Design", "Guidelines"],
+    "year": "2024",
+    "client": "TechFlow AI"
+  },
+  {
+    "id": "3",
+    "title": "Mobile Banking App",
+    "category": "UI Design",
+    "description": "Modern mobile banking application with intuitive navigation and comprehensive financial management features.",
+    "image": "/images/projects/banking-app.jpg",
+    "slug": "mobile-banking-app",
+    "fullDescription": "Designed a user-friendly mobile banking application that simplifies complex financial operations. Focus on security, accessibility, and ease of use for users of all ages.",
+    "tags": ["Mobile App", "FinTech", "UI/UX"],
+    "year": "2023",
+    "client": "NextGen Bank"
+  },
+  {
+    "id": "4",
+    "title": "Restaurant Website",
+    "category": "Web Design",
+    "description": "Elegant website design for a high-end restaurant featuring online reservations and interactive menu.",
+    "image": "/images/projects/restaurant.jpg",
+    "slug": "restaurant-website",
+    "fullDescription": "Developed a sophisticated web presence for a fine dining restaurant. The design emphasizes beautiful food photography, easy navigation, and seamless integration with reservation systems.",
+    "tags": ["Web Design", "Restaurant", "Responsive"],
+    "year": "2023",
+    "client": "La Cuisine"
+  },
+  {
+    "id": "5",
+    "title": "Fitness App Dashboard",
+    "category": "UI Design",
+    "description": "Comprehensive fitness tracking dashboard with data visualization and personalized workout plans.",
+    "image": "/images/projects/fitness.jpg",
+    "slug": "fitness-app-dashboard",
+    "fullDescription": "Created an engaging dashboard interface for a fitness application that helps users track their progress, set goals, and stay motivated. Features include workout tracking, nutrition logging, and social features.",
+    "tags": ["Dashboard", "Mobile", "Health & Fitness"],
+    "year": "2023",
+    "client": "FitLife Pro"
+  },
+  {
+    "id": "6",
+    "title": "Portfolio Redesign",
+    "category": "Web Design",
+    "description": "Personal portfolio website for a photographer showcasing work with elegant galleries and animations.",
+    "image": "/images/projects/portfolio.jpg",
+    "slug": "photographer-portfolio",
+    "fullDescription": "Designed a stunning portfolio website that puts the photographer's work front and center. Features include filterable galleries, lightbox viewing, and smooth page transitions.",
+    "tags": ["Portfolio", "Photography", "Web Design"],
+    "year": "2024",
+    "client": "Sarah Chen Photography"
+  },
+  {
+    "id": "7",
+    "title": "Educational Platform UI",
+    "category": "UI Design",
+    "description": "User interface design for an online learning platform with interactive courses and progress tracking.",
+    "image": "/images/projects/education.jpg",
+    "slug": "educational-platform",
+    "fullDescription": "Developed a comprehensive learning management system interface that makes online education engaging and accessible. Features include course management, video lessons, quizzes, and student dashboards.",
+    "tags": ["EdTech", "UI/UX", "Dashboard"],
+    "year": "2023",
+    "client": "LearnHub"
+  }
+]
