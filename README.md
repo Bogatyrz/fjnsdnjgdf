@@ -1,188 +1,112 @@
-# Designer Portfolio Website
+# VibeTasker
 
-A modern, responsive portfolio website for UI/UX designers built with Next.js, TypeScript, and Tailwind CSS.
+A modern, vibe-driven task management application with kanban boards, analytics, and team collaboration.
 
-## ✨ Features
+![VibeTasker](https://img.shields.io/badge/VibeTasker-Dark%20Glassmorphism-purple)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-cyan)
 
-- **Modern Design**: Clean, minimalist aesthetic with smooth animations and transitions
-- **Fully Responsive**: Mobile-first approach ensuring perfect display on all devices
-- **Portfolio Gallery**: Filterable project showcase with modal details view
-- **Blog System**: Full-featured blog with individual post pages and categories
-- **Contact Form**: Interactive contact form with validation
-- **SEO Optimized**: Meta tags, OpenGraph support, and semantic HTML
-- **Fast Performance**: Static generation for optimal loading speeds
-- **TypeScript**: Full type safety throughout the application
+## Features
 
-## 📁 Project Structure
+- **Dashboard**: Overview of tasks, activity feed, and quick actions
+- **Kanban Board**: Drag-and-drop task management with locked Daily BASE column
+- **Analytics**: Visual insights into team productivity and task metrics
+- **Team Management**: Invite and manage team members
+- **Settings**: Customize appearance, notifications, and integrations
 
-```
-├── app/                    # Next.js app directory
-│   ├── about/             # About page
-│   ├── blog/              # Blog listing and post pages
-│   ├── contact/           # Contact page
-│   ├── portfolio/         # Portfolio gallery page
-│   ├── layout.tsx         # Root layout with header/footer
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── Header.tsx         # Navigation header
-│   └── Footer.tsx         # Site footer
-├── lib/                   # Utilities and data
-│   ├── data/             # JSON data files
-│   │   ├── projects.json # Portfolio projects
-│   │   └── blog-posts.json # Blog posts
-│   └── types.ts          # TypeScript type definitions
-└── public/               # Static assets
-```
+## Design System
 
-## 🚀 Getting Started
+### Dark Glassmorphism Theme
+- Dark backgrounds with translucent glass panels
+- Frosted glass effects with backdrop blur
+- Subtle borders with low opacity
 
-### Prerequisites
+### Gradient Accents
+- Primary: Purple (#8b5cf6) → Blue (#3b82f6) → Cyan (#06b6d4)
+- Success: Green (#10b981)
+- Warning: Amber (#f59e0b)
+- Error: Red (#ef4444)
 
-- Node.js 18+ and npm
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd project
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Run the development server:
-```bash
-npm run dev
-```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## 📄 Pages
-
-### Home (/)
-- Hero section with introduction
-- Featured projects showcase
-- Skills overview
-- Latest blog posts
-- Call-to-action section
-
-### Portfolio (/portfolio)
-- Grid display of all projects
-- Category filtering (UI Design, Web Design, Branding)
-- Modal view with detailed project information
-- 7 example projects included
-
-### Blog (/blog)
-- List of all blog posts with previews
-- Category sidebar
-- Recent posts widget
-- Individual post pages with full content
-- 4 example articles included
-
-### About (/about)
-- Designer biography and introduction
-- Skills with progress indicators
-- Tools and technologies used
-- Work experience timeline
-- Social media links
-
-### Contact (/contact)
-- Contact form with validation
-- Contact information display
-- Social media links
-- Location map placeholder
-
-## 🎨 Customization
-
-### Colors
-
-The color scheme uses Tailwind CSS classes. Main colors:
-- Primary: Purple (`purple-600`)
-- Secondary: Blue (`blue-600`)
-- Accent: Pink (`pink-500`)
-
-### Content
-
-#### Projects
-Edit `/lib/data/projects.json` to add/modify portfolio projects.
-
-#### Blog Posts
-Edit `/lib/data/blog-posts.json` to add/modify blog articles.
-
-#### Personal Information
-- Update site metadata in `/app/layout.tsx`
-- Modify about page content in `/app/about/page.tsx`
-- Update contact information in `/app/contact/page.tsx`
-
-### Fonts
-
-The site uses Google Fonts:
-- **Inter**: Body text
-- **Playfair Display**: Headings
-
-Modify in `/app/layout.tsx` to change fonts.
-
-## 🏗️ Building for Production
-
-```bash
-npm run build
-```
-
-This creates an optimized production build in the `.next` folder.
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Import your repository on [Vercel](https://vercel.com)
-3. Deploy with one click
-
-### Other Platforms
-
-The app can be deployed to any platform that supports Next.js:
-- Netlify
-- AWS Amplify
-- Digital Ocean
-- Self-hosted with Node.js
-
-## 📊 Performance
-
-The site is optimized for performance:
-- Static generation for fast page loads
-- Optimized images with next/image
-- Minimal JavaScript bundle
-- CSS purging with Tailwind
-
-Expected Lighthouse scores:
-- Performance: 90+
-- Accessibility: 95+
-- Best Practices: 95+
-- SEO: 100
-
-## 🛠️ Technologies
+## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Font Loading**: next/font
-- **Image Optimization**: next/image
+- **Styling**: Tailwind CSS 4
+- **Backend**: Convex (schema defined, ready for integration)
+- **Icons**: Lucide React
 
-## 📝 License
+## Project Structure
 
-This project is open source and available for personal and commercial use.
+```
+app/
+├── dashboard/          # Dashboard overview page
+├── kanban/            # Kanban board with drag-drop
+├── analytics/         # Charts and metrics
+├── team/              # Team management
+├── settings/          # App settings
+├── layout.tsx         # Root layout with AppShell
+├── page.tsx           # Redirects to dashboard
+└── globals.css        # Global styles + design tokens
 
-## 🤝 Contributing
+components/
+├── AppShell.tsx       # Main app shell wrapper
+├── Sidebar.tsx        # Navigation sidebar
+├── Topbar.tsx         # Header with search/actions
+├── kanban/            # Kanban components
+│   ├── KanbanBoard.tsx
+│   ├── KanbanColumn.tsx
+│   └── KanbanTaskCard.tsx
+└── modals/            # Modal dialogs
+    ├── CreateTaskModal.tsx
+    ├── CreateColumnModal.tsx
+    └── TaskDetailsModal.tsx
 
-Feel free to submit issues and enhancement requests!
+lib/
+├── types.ts           # TypeScript type definitions
+├── data/
+│   └── mock-data.ts   # Mock data for development
+└── providers/
+    └── ConvexProvider.tsx
 
-## 📧 Contact
+convex/
+└── schema.ts          # Convex database schema
+```
 
-For questions or support, reach out at hello@alexmorgan.design
+## Daily BASE Column
 
----
+The Daily BASE column is a special locked column that:
+- Cannot be deleted or renamed
+- Resets daily (implementation pending)
+- Serves as the default entry point for new tasks
+- Visual distinction with purple gradient styling
 
-Made with ❤️ by Alex Morgan
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## Convex Integration
+
+The Convex schema is defined in `convex/schema.ts`. To connect:
+
+1. Set up a Convex project: `npx convex dev`
+2. Add your Convex URL to `.env.local`:
+   ```
+   NEXT_PUBLIC_CONVEX_URL=your_convex_url
+   ```
+3. Uncomment the Convex provider in `layout.tsx`
+
+## License
+
+MIT
