@@ -1,27 +1,26 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { ConvexProvider } from "@/lib/providers/ConvexProvider";
+import { AppShell } from "@/components/AppShell";
 
 const inter = Inter({
-  variable: "--font-inter",
   subsets: ["latin"],
+  variable: "--font-inter",
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Alex Morgan - UI/UX Designer Portfolio",
-  description: "Portfolio of Alex Morgan, a UI/UX designer creating beautiful and functional digital experiences.",
-  keywords: ["UI Design", "UX Design", "Portfolio", "Web Design", "Branding"],
-  authors: [{ name: "Alex Morgan" }],
+  title: "VibeTasker - Task Management with Vibes",
+  description: "A modern, vibe-driven task management application with kanban boards, analytics, and team collaboration.",
+  keywords: ["task management", "kanban", "productivity", "collaboration"],
   openGraph: {
-    title: "Alex Morgan - UI/UX Designer Portfolio",
-    description: "Portfolio of Alex Morgan, a UI/UX designer creating beautiful and functional digital experiences.",
+    title: "VibeTasker - Task Management with Vibes",
+    description: "A modern, vibe-driven task management application",
     type: "website",
   },
 };
@@ -32,15 +31,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body
-        className={`${inter.variable} ${playfair.variable} font-sans antialiased`}
-      >
-        <Header />
-        <main className="pt-16 min-h-screen">
-          {children}
-        </main>
-        <Footer />
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="font-sans antialiased bg-mesh">
+        <ConvexProvider>
+          <AppShell>{children}</AppShell>
+        </ConvexProvider>
       </body>
     </html>
   );

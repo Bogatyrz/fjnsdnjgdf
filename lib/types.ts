@@ -1,32 +1,144 @@
-export interface Project {
+// User Types
+export interface User {
   id: string;
-  title: string;
-  category: string;
-  description: string;
-  image: string;
-  slug: string;
-  fullDescription?: string;
-  tags?: string[];
-  year?: string;
-  client?: string;
-}
-
-export interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  date: string;
-  author: string;
-  content: string;
-  excerpt: string;
-  image: string;
-  category: string;
-  readTime?: string;
-}
-
-export interface ContactForm {
   name: string;
   email: string;
-  phone?: string;
-  message: string;
+  avatar?: string;
+  role: "admin" | "member";
+  createdAt: number;
+}
+
+// Column Types
+export interface Column {
+  id: string;
+  title: string;
+  order: number;
+  type: "daily" | "custom";
+  locked?: boolean;
+  color?: string;
+  createdAt: number;
+  createdBy: string;
+}
+
+// Task Types
+export type Priority = "low" | "medium" | "high";
+export type TaskStatus = "todo" | "in_progress" | "done";
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  columnId: string;
+  assigneeId?: string;
+  assignee?: User;
+  priority: Priority;
+  status: TaskStatus;
+  tags?: string[];
+  order: number;
+  dueDate?: number;
+  createdAt: number;
+  createdBy: string;
+}
+
+// Task History Types
+export type TaskAction = "created" | "moved" | "updated" | "deleted";
+
+export interface TaskHistory {
+  id: string;
+  taskId: string;
+  action: TaskAction;
+  fromColumnId?: string;
+  toColumnId?: string;
+  performedBy: string;
+  performer?: User;
+  performedAt: number;
+  metadata?: string;
+}
+
+// Analytics Types
+export interface Analytics {
+  id: string;
+  date: string;
+  tasksCreated: number;
+  tasksCompleted: number;
+  tasksMoved: number;
+  avgCompletionTime?: number;
+  updatedAt: number;
+}
+
+// Dashboard Types
+export interface DashboardStats {
+  totalTasks: number;
+  tasksCompleted: number;
+  tasksInProgress: number;
+  tasksPending: number;
+  completionRate: number;
+  avgTasksPerDay: number;
+}
+
+// Kanban Types
+export interface KanbanColumn extends Column {
+  tasks: Task[];
+}
+
+export interface DragItem {
+  task: Task;
+  sourceColumnId: string;
+}
+
+// Modal Types
+export type ModalType = "task" | "column" | "confirm" | null;
+
+export interface ModalState {
+  isOpen: boolean;
+  type: ModalType;
+  data?: unknown;
+}
+
+// Form Types
+export interface CreateTaskForm {
+  title: string;
+  description: string;
+  columnId: string;
+  priority: Priority;
+  dueDate?: Date;
+  tags: string[];
+}
+
+export interface CreateColumnForm {
+  title: string;
+  color?: string;
+}
+
+// Filter Types
+export interface TaskFilters {
+  priority?: Priority[];
+  status?: TaskStatus[];
+  assignee?: string[];
+  tags?: string[];
+  dueDate?: "today" | "week" | "overdue" | null;
+}
+
+// Theme Types
+export interface ThemeConfig {
+  primaryColor: string;
+  accentColor: string;
+  glassEffect: boolean;
+  animations: boolean;
+}
+
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+// Mock Data Types
+export interface MockData {
+  users: User[];
+  columns: Column[];
+  tasks: Task[];
+  taskHistory: TaskHistory[];
+  analytics: Analytics[];
 }
