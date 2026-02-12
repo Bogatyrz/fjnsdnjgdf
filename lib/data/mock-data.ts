@@ -91,6 +91,7 @@ export const mockTasks: Task[] = [
     dueDate: Date.now() + 86400000,
     createdAt: Date.now() - 86400000,
     createdBy: "user_1",
+    recurrence: "daily",
   },
   {
     id: "task_2",
@@ -105,6 +106,7 @@ export const mockTasks: Task[] = [
     dueDate: Date.now() + 86400000,
     createdAt: Date.now() - 86400000,
     createdBy: "user_1",
+    recurrence: "daily",
   },
   {
     id: "task_3",
@@ -119,6 +121,22 @@ export const mockTasks: Task[] = [
     dueDate: Date.now() + 86400000,
     createdAt: Date.now() - 86400000,
     createdBy: "user_2",
+    recurrence: "daily",
+  },
+  {
+    id: "task_11",
+    title: "Weekly planning",
+    description: "Plan goals for the week",
+    columnId: "col_daily",
+    assigneeId: "user_1",
+    priority: "high",
+    status: "todo",
+    tags: ["weekly", "planning"],
+    order: 3,
+    dueDate: Date.now() + 86400000,
+    createdAt: Date.now() - 86400000 * 2,
+    createdBy: "user_1",
+    recurrence: "weekly",
   },
   // To Do column
   {

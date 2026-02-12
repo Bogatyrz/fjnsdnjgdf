@@ -23,6 +23,7 @@ export interface Column {
 // Task Types
 export type Priority = "low" | "medium" | "high";
 export type TaskStatus = "todo" | "in_progress" | "done";
+export type RecurrenceType = "daily" | "weekly" | "monthly";
 
 export interface Task {
   id: string;
@@ -38,6 +39,11 @@ export interface Task {
   dueDate?: number;
   createdAt: number;
   createdBy: string;
+  // Recurrence support
+  recurrence?: RecurrenceType | null;
+  // Streak tracking
+  streak?: number;
+  lastCompletedAt?: number;
 }
 
 // Task History Types
@@ -74,6 +80,9 @@ export interface DashboardStats {
   tasksPending: number;
   completionRate: number;
   avgTasksPerDay: number;
+  todayCompleted: number;
+  todayCreated: number;
+  streak: number;
 }
 
 // Kanban Types
@@ -87,7 +96,7 @@ export interface DragItem {
 }
 
 // Modal Types
-export type ModalType = "task" | "column" | "confirm" | null;
+export type ModalType = "task" | "column" | "confirm" | "done" | "not_today" | "failure" | "celebration" | null;
 
 export interface ModalState {
   isOpen: boolean;
@@ -103,11 +112,14 @@ export interface CreateTaskForm {
   priority: Priority;
   dueDate?: Date;
   tags: string[];
+  assigneeId?: string;
+  recurrence?: RecurrenceType | null;
 }
 
 export interface CreateColumnForm {
   title: string;
   color?: string;
+  type?: "daily" | "custom";
 }
 
 // Filter Types
@@ -125,6 +137,7 @@ export interface ThemeConfig {
   accentColor: string;
   glassEffect: boolean;
   animations: boolean;
+  memeMode: boolean;
 }
 
 // API Response Types
@@ -141,4 +154,14 @@ export interface MockData {
   tasks: Task[];
   taskHistory: TaskHistory[];
   analytics: Analytics[];
+}
+
+// User Settings
+export interface UserSettings {
+  userId: string;
+  memeMode: boolean;
+  confettiEnabled: boolean;
+  selectedMemeImages: string[];
+  theme: ThemeConfig;
+  updatedAt: number;
 }
