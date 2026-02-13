@@ -1,67 +1,224 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { useState, useEffect, useCallback } from "react";
+import { Task } from "@/lib/types";
+import { mockTasks, mockColumns, mockUsers } from "@/lib/data/mock-data";
+
+// Local state for mock data
+let tasksState = [...mockTasks];
+const listeners = new Set<() => void>();
+
+const notifyListeners = () => {
+  listeners.forEach(listener => listener());
+};
+
+// Helper to get column name
+const getColumnIdByType = (type: string) => {
+  const col = mockColumns.find(c => c.type === type);
+  return col?.id;
+};
 
 // Query hooks
 export function useAllTasks() {
-  return useQuery(api.tasks.getAll);
+  const [tasks, setTasks] = useState<Task[]>(tasksState);
+
+  useEffect(() => {
+    const listener = () => setTasks([...tasksState]);
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }, []);
+
+  return tasks;
 }
 
-export function useTasksByColumn(columnId: Id<"columns">) {
-  return useQuery(api.tasks.getByColumn, { columnId });
+export function useTasksByColumn(columnId: string) {
+  const tasks = useAllTasks();
+  return tasks.filter(t => t.columnId === columnId).sort((a, b) => {
+    if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
+    return a.order - b.order;
+  });
 }
 
 export function useTodayTasks() {
-  return useQuery(api.tasks.getTodayTasks);
+  const tasks = useAllTasks();
+  const startOfDay = new Date().setHours(0, 0, 0, 0);
+  const endOfDay = new Date().setHours(23, 59, 59, 999);
+  const dailyBaseId = getColumnIdByType("daily");
+
+  return tasks.filter((task) => {
+    const isDueToday = task.dueDate && task.dueDate >= startOfDay && task.dueDate <= endOfDay;
+    const isDailyBase = task.columnId === dailyBaseId;
+    const isNotDone = task.status !== "done";
+    return (isDueToday || isDailyBase) && isNotDone;
+  }).sort((a, b) => {
+    const priorityWeight = { high: 3, medium: 2, low: 1 };
+    return priorityWeight[b.priority] - priorityWeight[a.priority];
+  });
 }
 
-export function useTaskById(taskId: Id<"tasks">) {
-  return useQuery(api.tasks.getById, { taskId });
+export function useTaskById(taskId: string) {
+  const tasks = useAllTasks();
+  return tasks.find(t => t.id === taskId);
 }
 
 export function useTasksByStatus(status: "todo" | "in_progress" | "done") {
-  return useQuery(api.tasks.getByStatus, { status });
-}
-
-export function useTasksByAssignee(assigneeId: Id<"users">) {
-  return useQuery(api.tasks.getByAssignee, { assigneeId });
+  const tasks = useAllTasks();
+  return tasks.filter(t => t.status === status);
 }
 
 export function useOverdueTasks() {
-  return useQuery(api.tasks.getOverdue);
+  const tasks = useAllTasks();
+  const now = Date.now();
+  return tasks.filter(t => t.dueDate && t.dueDate < now && t.status !== "done");
 }
 
 // Mutation hooks
 export function useCreateTask() {
-  return useMutation(api.tasks.create);
+  return useCallback(async (args: {
+    title: string;
+    description?: string;
+    columnId: string;
+    priority: "low" | "medium" | "high";
+    status?: "todo" | "in_progress" | "done";
+    dueDate?: number;
+    tags?: string[];
+    assigneeId?: string;
+  }) => {
+    const newTask: Task = {
+      id: `task_${Date.now()}`,
+      title: args.title,
+      description: args.description,
+      columnId: args.columnId,
+      assigneeId: args.assigneeId,
+      priority: args.priority,
+      status: args.status || "todo",
+      tags: args.tags || [],
+      order: tasksState.length,
+      dueDate: args.dueDate,
+      createdAt: Date.now(),
+      createdBy: "user_1",
+    };
+    tasksState = [...tasksState, newTask];
+    notifyListeners();
+    return newTask.id;
+  }, []);
 }
 
 export function useUpdateTask() {
-  return useMutation(api.tasks.update);
+  return useCallback(async (args: {
+    taskId: string;
+    title?: string;
+    description?: string;
+    columnId?: string;
+    priority?: "low" | "medium" | "high";
+    status?: "todo" | "in_progress" | "done";
+    dueDate?: number;
+    tags?: string[];
+    assigneeId?: string | null;
+  }) => {
+    tasksState = tasksState.map(t => 
+      t.id === args.taskId ? { ...t, ...args, assigneeId: args.assigneeId || undefined } : t
+    );
+    notifyListeners();
+    return true;
+  }, []);
 }
 
 export function useMoveTask() {
-  return useMutation(api.tasks.move);
+  return useCallback(async (args: {
+    taskId: string;
+    targetColumnId: string;
+    newOrder?: number;
+  }) => {
+    tasksState = tasksState.map(t => {
+      if (t.id === args.taskId) {
+        const newStatus = args.targetColumnId === getColumnIdByType("done") ? "done" : 
+                         args.targetColumnId === "col_progress" ? "in_progress" : "todo";
+        return { 
+          ...t, 
+          columnId: args.targetColumnId, 
+          status: newStatus,
+          order: args.newOrder ?? t.order 
+        };
+      }
+      return t;
+    });
+    notifyListeners();
+    return true;
+  }, []);
 }
 
 export function useDeleteTask() {
-  return useMutation(api.tasks.remove);
+  return useCallback(async (args: { taskId: string }) => {
+    tasksState = tasksState.filter(t => t.id !== args.taskId);
+    notifyListeners();
+    return true;
+  }, []);
 }
 
 export function useReorderTask() {
-  return useMutation(api.tasks.reorder);
+  return useCallback(async (args: { taskId: string; newOrder: number }) => {
+    tasksState = tasksState.map(t => 
+      t.id === args.taskId ? { ...t, order: args.newOrder } : t
+    );
+    notifyListeners();
+    return true;
+  }, []);
 }
 
 export function useHandleRecurrence() {
-  return useMutation(api.tasks.handleRecurrence);
+  return useCallback(async (args: {
+    taskId: string;
+    recurrenceType: "daily" | "weekly" | "monthly";
+  }) => {
+    const original = tasksState.find(t => t.id === args.taskId);
+    if (!original) return null;
+
+    let nextDueDate: number;
+    switch (args.recurrenceType) {
+      case "daily":
+        nextDueDate = Date.now() + 24 * 60 * 60 * 1000;
+        break;
+      case "weekly":
+        nextDueDate = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "monthly":
+        const date = new Date();
+        date.setMonth(date.getMonth() + 1);
+        nextDueDate = date.getTime();
+        break;
+    }
+
+    const newTask: Task = {
+      ...original,
+      id: `task_${Date.now()}`,
+      status: "todo",
+      dueDate: nextDueDate,
+      createdAt: Date.now(),
+    };
+    tasksState = [...tasksState, newTask];
+    notifyListeners();
+    return newTask.id;
+  }, []);
 }
 
 export function useMarkTaskDone() {
-  return useMutation(api.tasks.markDone);
+  return useCallback(async (args: { taskId: string }) => {
+    tasksState = tasksState.map(t => 
+      t.id === args.taskId ? { ...t, status: "done" as const } : t
+    );
+    notifyListeners();
+    return true;
+  }, []);
 }
 
 export function useSkipTask() {
-  return useMutation(api.tasks.skipTask);
+  return useCallback(async (args: { taskId: string; reason?: string }) => {
+    const tomorrow = Date.now() + 24 * 60 * 60 * 1000;
+    tasksState = tasksState.map(t => 
+      t.id === args.taskId ? { ...t, dueDate: tomorrow, status: "todo" as const } : t
+    );
+    notifyListeners();
+    return true;
+  }, []);
 }

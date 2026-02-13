@@ -10,9 +10,11 @@ import {
   Calendar,
   Command,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { CreateTaskModal } from "./modals/CreateTaskModal";
-import { mockColumns } from "@/lib/data/mock-data";
+import { useCreateTask } from "@/lib/hooks/useTasks";
+import { useAllColumns } from "@/lib/hooks/useColumns";
 import { CreateTaskForm } from "@/lib/types";
 
 interface TopbarProps {
@@ -30,12 +32,37 @@ export function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
   ]);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Convex
+  const createTask = useCreateTask();
+  const columns = useAllColumns();
+
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const handleCreateTask = (taskData: CreateTaskForm & { recurrence?: string | null }) => {
-    // In a real app, this would call the Convex mutation
-    console.log("Creating task:", taskData);
-    // Could also add toast notification here
+  const handleCreateTask = async (taskData: CreateTaskForm & { recurrence?: string | null }) => {
+    try {
+      // Find Daily BASE column as default
+      const dailyBaseColumn = columns?.find(c => c.type === "daily");
+      const targetColumnId = taskData.columnId || dailyBaseColumn?._id;
+
+      if (!targetColumnId) {
+        console.error("No column found for task");
+        return;
+      }
+
+      await createTask({
+        title: taskData.title,
+        description: taskData.description,
+        columnId: targetColumnId,
+        priority: taskData.priority,
+        dueDate: taskData.dueDate?.getTime(),
+        tags: taskData.tags,
+        assigneeId: taskData.assigneeId as any,
+      });
+      
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create task:", error);
+    }
   };
 
   return (

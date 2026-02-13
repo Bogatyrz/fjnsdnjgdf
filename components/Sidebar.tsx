@@ -13,6 +13,8 @@ import {
   Sparkles,
   Flame,
 } from "lucide-react";
+import { useTodayTasks } from "@/lib/hooks/useTasks";
+import { useDashboardStats } from "@/lib/hooks/useAnalytics";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -38,6 +40,13 @@ const itemVariants = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  
+  // Convex data
+  const todayTasks = useTodayTasks();
+  const stats = useDashboardStats();
+
+  const todayTaskCount = todayTasks?.length || 0;
+  const streak = stats?.streak || 0;
 
   return (
     <>
@@ -194,9 +203,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span className="text-xs font-medium text-foreground-muted">Daily BASE</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                  <p className="text-sm font-medium">3 tasks today</p>
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0] }}
+                    transition={{ repeat: Infinity, duration: 1, repeatDelay: 2 }}
+                  >
+                    <Flame className="w-4 h-4 text-amber-400" />
+                  </motion.div>
+                  <motion.p 
+                    key={todayTaskCount}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    className="text-sm font-medium"
+                  >
+                    {todayTaskCount} task{todayTaskCount !== 1 ? 's' : ''} today
+                  </motion.p>
                 </div>
+                {streak > 0 && (
+                  <motion.div 
+                    className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1 text-xs text-amber-400"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <span>🔥</span>
+                    <span>{streak} day streak</span>
+                  </motion.div>
+                )}
               </motion.div>
             </motion.div>
           )}

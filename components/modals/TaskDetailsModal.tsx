@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Tag, User, Flag, Clock, MessageSquare, Trash2, Edit2, CheckCircle2, Loader2 } from "lucide-react";
 import { Task, Priority, TaskStatus } from "@/lib/types";
-import { mockColumns, mockUsers } from "@/lib/data/mock-data";
+import { useAllColumns } from "@/lib/hooks/useColumns";
+import { mockUsers } from "@/lib/data/mock-data";
 
 interface TaskDetailsModalProps {
   isOpen: boolean;
@@ -37,13 +38,23 @@ export function TaskDetailsModal({
   const [editedTask, setEditedTask] = useState<Task | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const columns = useAllColumns();
+
+  // Reset edited task when modal opens with new task
+  useEffect(() => {
+    if (task && isOpen) {
+      setEditedTask(task);
+      setIsEditing(false);
+    }
+  }, [task, isOpen]);
 
   if (!isOpen || !task) return null;
 
   const currentTask = editedTask || task;
   const priority = priorityConfig[currentTask.priority];
   const status = statusConfig[currentTask.status];
-  const column = mockColumns.find((c) => c.id === currentTask.columnId);
+  const column = columns?.find((c) => c._id === currentTask.columnId);
   const assignee = currentTask.assigneeId
     ? mockUsers.find((u) => u.id === currentTask.assigneeId)
     : null;
@@ -54,7 +65,6 @@ export function TaskDetailsModal({
       try {
         await onUpdate(editedTask);
         setIsEditing(false);
-        setEditedTask(null);
       } finally {
         setIsSaving(false);
       }
@@ -75,8 +85,19 @@ export function TaskDetailsModal({
   const handleStatusChange = (newStatus: TaskStatus) => {
     const updated = { ...currentTask, status: newStatus };
     setEditedTask(updated);
-    if (onUpdate) {
+    if (onUpdate && !isEditing) {
       onUpdate(updated);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      if (isEditing) {
+        setIsEditing(false);
+        setEditedTask(task);
+      } else {
+        onClose();
+      }
     }
   };
 
@@ -87,6 +108,7 @@ export function TaskDetailsModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        onKeyDown={handleKeyDown}
       >
         {/* Overlay */}
         <motion.div
@@ -134,7 +156,7 @@ export function TaskDetailsModal({
               {!isEditing ? (
                 <>
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
+                    whileHover={{ scale: 1.1, rotate: 15 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
                       setEditedTask(task);
@@ -177,7 +199,7 @@ export function TaskDetailsModal({
                 </motion.button>
               )}
               <motion.button
-                whileHover={{ scale: 1.1 }}
+                whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onClose}
                 className="p-2 rounded-lg hover:bg-white/5 transition-colors"
@@ -196,7 +218,7 @@ export function TaskDetailsModal({
               transition={{ delay: 0.1 }}
             >
               {isEditing ? (
-                <input
+                <motion.input
                   type="text"
                   value={editedTask?.title || ""}
                   onChange={(e) =>
@@ -205,6 +227,7 @@ export function TaskDetailsModal({
                     )
                   }
                   className="input-glass text-xl font-semibold"
+                  autoFocus
                 />
               ) : (
                 <h2 className="text-2xl font-bold">{currentTask.title}</h2>
@@ -216,11 +239,14 @@ export function TaskDetailsModal({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="flex gap-2"
+              className="flex gap-2 flex-wrap"
             >
-              {(Object.keys(statusConfig) as TaskStatus[]).map((s) => (
+              {(Object.keys(statusConfig) as TaskStatus[]).map((s, index) => (
                 <motion.button
                   key={s}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 + index * 0.05 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleStatusChange(s)}
@@ -290,7 +316,13 @@ export function TaskDetailsModal({
                   />
                   <span className="font-medium">{column?.title || "Unknown"}</span>
                   {column?.locked && (
-                    <span className="text-xs text-purple-400">🔒</span>
+                    <motion.span 
+                      className="text-xs text-purple-400"
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      🔒
+                    </motion.span>
                   )}
                 </div>
               </div>
@@ -361,50 +393,64 @@ export function TaskDetailsModal({
             </motion.div>
 
             {/* Tags */}
-            {(currentTask.tags && currentTask.tags.length > 0) || isEditing ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <label className="block text-sm font-medium text-foreground-muted mb-2 flex items-center gap-1">
-                  <Tag className="w-4 h-4" />
-                  Tags
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {currentTask.tags?.map((tag) => (
-                    <motion.span
-                      key={tag}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 text-sm font-medium"
-                    >
-                      {tag}
-                    </motion.span>
-                  ))}
-                </div>
-              </motion.div>
-            ) : null}
+            <AnimatePresence>
+              {(currentTask.tags && currentTask.tags.length > 0) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <label className="block text-sm font-medium text-foreground-muted mb-2 flex items-center gap-1">
+                    <Tag className="w-4 h-4" />
+                    Tags
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {currentTask.tags?.map((tag, index) => (
+                      <motion.span
+                        key={tag}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 + index * 0.05 }}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 text-sm font-medium"
+                      >
+                        {tag}
+                      </motion.span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Recurrence */}
-            {currentTask.recurrence && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="glass rounded-xl p-4"
-              >
-                <label className="block text-sm font-medium text-foreground-muted mb-2">
-                  Recurrence
-                </label>
-                <div className="flex items-center gap-2 text-purple-400">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span className="font-medium capitalize">{currentTask.recurrence}</span>
-                </div>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {currentTask.recurrence && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="glass rounded-xl p-4"
+                >
+                  <label className="block text-sm font-medium text-foreground-muted mb-2">
+                    Recurrence
+                  </label>
+                  <div className="flex items-center gap-2 text-purple-400">
+                    <motion.svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </motion.svg>
+                    <span className="font-medium capitalize">{currentTask.recurrence}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Comments Section */}
             <motion.div
