@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   Clock,
@@ -12,11 +12,14 @@ import {
   Target,
   Zap,
   Flame,
+  Loader2,
 } from "lucide-react";
-import { mockData, getTasksByColumn, getDailyBaseColumn } from "@/lib/data/mock-data";
 import { Task } from "@/lib/types";
 import { CelebrationModal } from "@/components/modals/CelebrationModal";
 import { DoneModal, NotTodayModal, FailureModal } from "@/components/modals/TaskActionModals";
+import { useTodayTasks, useMarkTaskDone, useSkipTask } from "@/lib/hooks/useTasks";
+import { useDashboardStats } from "@/lib/hooks/useAnalytics";
+import { useAllColumns } from "@/lib/hooks/useColumns";
 
 interface StatCardProps {
   title: string;
@@ -42,15 +45,25 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: 1.02, y: -2 }}
       className="glass-card rounded-2xl p-6"
     >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-foreground-muted mb-1">{title}</p>
-          <h3 className="text-3xl font-bold">{value}</h3>
+          <motion.h3 
+            className="text-3xl font-bold"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: delay + 0.2, type: "spring", stiffness: 200 }}
+          >
+            {value}
+          </motion.h3>
           {change && (
-            <p
+            <motion.p
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: delay + 0.3 }}
               className={`text-sm mt-1 flex items-center gap-1 ${
                 changeType === "positive"
                   ? "text-green-400"
@@ -62,11 +75,11 @@ function StatCard({
               {changeType === "positive" && <TrendingUp className="w-3 h-3" />}
               {changeType === "negative" && <TrendingUp className="w-3 h-3 rotate-180" />}
               {change}
-            </p>
+            </motion.p>
           )}
         </div>
         <motion.div
-          whileHover={{ rotate: 10 }}
+          whileHover={{ rotate: 10, scale: 1.1 }}
           className="w-12 h-12 rounded-xl flex items-center justify-center"
           style={{ backgroundColor: `${color}20`, color }}
         >
@@ -99,12 +112,16 @@ function TodayTaskItem({ task, onDone, onNotToday, onFailure, delay = 0 }: TaskI
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay, duration: 0.3 }}
+      whileHover={{ scale: 1.01, x: 4 }}
       className="glass rounded-xl p-4 group hover:bg-white/5 transition-all"
     >
       <div className="flex items-center gap-4">
-        <div
+        <motion.div
           className="w-2 h-12 rounded-full"
           style={{ backgroundColor: priorityColors[task.priority] }}
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ delay: delay + 0.1 }}
         />
         
         <div className="flex-1 min-w-0">
@@ -127,7 +144,11 @@ function TodayTaskItem({ task, onDone, onNotToday, onFailure, delay = 0 }: TaskI
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <motion.div 
+          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          initial={{ opacity: 0 }}
+          whileHover={{ scale: 1.05 }}
+        >
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -155,60 +176,52 @@ function TodayTaskItem({ task, onDone, onNotToday, onFailure, delay = 0 }: TaskI
           >
             <AlertCircle className="w-4 h-4" />
           </motion.button>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   );
 }
 
 export default function DashboardPage() {
-  const { tasks, taskHistory } = mockData;
-  const dailyBaseColumn = getDailyBaseColumn();
-  const dailyTasks = getTasksByColumn(dailyBaseColumn.id);
+  // Convex queries
+  const todayTasksData = useTodayTasks();
+  const stats = useDashboardStats();
+  const columns = useAllColumns();
+  
+  // Convex mutations
+  const markTaskDone = useMarkTaskDone();
+  const skipTask = useSkipTask();
 
-  // State for modals
+  // State
+  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [celebrationTask, setCelebrationTask] = useState<Task | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "done" | "not_today" | "failure" | null;
     task: Task | null;
   }>({ type: null, task: null });
+  const [memeMode] = useState(true);
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    const total = tasks.length;
-    const completed = tasks.filter((t) => t.status === "done").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const pending = tasks.filter((t) => t.status === "todo").length;
-    const completionRate = Math.round((completed / total) * 100) || 0;
-    const streak = 3; // Would come from analytics
-    
+  // Sync data
+  useEffect(() => {
+    if (todayTasksData !== undefined) {
+      setTodayTasks(todayTasksData as Task[]);
+      setIsLoading(false);
+    }
+  }, [todayTasksData]);
+
+  // Calculate derived stats
+  const dashboardStats = useMemo(() => {
+    if (!stats) return null;
     return {
-      total,
-      completed,
-      inProgress,
-      pending,
-      completionRate,
-      streak,
+      total: stats.totalTasks,
+      completed: stats.tasksCompleted,
+      inProgress: stats.tasksInProgress,
+      pending: stats.tasksPending,
+      completionRate: stats.completionRate,
+      streak: stats.streak,
     };
-  }, [tasks]);
-
-  // Get today's tasks (Daily BASE + due today)
-  const todayTasks = useMemo(() => {
-    const startOfDay = new Date().setHours(0, 0, 0, 0);
-    const endOfDay = new Date().setHours(23, 59, 59, 999);
-    
-    return tasks.filter((task) => {
-      const isDueToday = task.dueDate && task.dueDate >= startOfDay && task.dueDate <= endOfDay;
-      const isDailyBase = task.columnId === "col_daily";
-      const isNotDone = task.status !== "done";
-      
-      return (isDueToday || isDailyBase) && isNotDone;
-    }).sort((a, b) => {
-      // High priority first
-      const priorityWeight = { high: 3, medium: 2, low: 1 };
-      return priorityWeight[b.priority] - priorityWeight[a.priority];
-    });
-  }, [tasks]);
+  }, [stats]);
 
   // Handlers
   const handleTaskDone = (task: Task) => {
@@ -223,20 +236,57 @@ export default function DashboardPage() {
     setActionModal({ type: "failure", task });
   };
 
-  const handleDoneConfirm = () => {
+  const handleDoneConfirm = async (recurrence?: string) => {
     if (actionModal.task) {
-      setCelebrationTask(actionModal.task);
-      setActionModal({ type: null, task: null });
+      try {
+        await markTaskDone({ taskId: actionModal.task.id as any });
+        setCelebrationTask(actionModal.task);
+        setActionModal({ type: null, task: null });
+      } catch (error) {
+        console.error("Failed to complete task:", error);
+      }
     }
   };
 
-  const handleNotTodayConfirm = () => {
-    setActionModal({ type: null, task: null });
+  const handleNotTodayConfirm = async (reason?: string) => {
+    if (actionModal.task) {
+      try {
+        await skipTask({
+          taskId: actionModal.task.id as any,
+          reason: reason || "Postponed",
+        });
+        setActionModal({ type: null, task: null });
+      } catch (error) {
+        console.error("Failed to skip task:", error);
+      }
+    }
   };
 
   const handleFailureConfirm = () => {
     setActionModal({ type: null, task: null });
   };
+
+  // Calculate completed tasks for progress bar
+  const completedTodayTasks = useMemo(() => {
+    return todayTasks.filter(t => t.status === "done").length;
+  }, [todayTasks]);
+
+  const progressPercentage = todayTasks.length > 0 
+    ? (completedTodayTasks / todayTasks.length) * 100 
+    : 0;
+
+  if (isLoading || !dashboardStats) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        >
+          <Loader2 className="w-8 h-8 text-purple-400" />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -256,7 +306,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Tasks"
-          value={stats.total}
+          value={dashboardStats.total}
           change="+12%"
           changeType="positive"
           icon={ListTodo}
@@ -265,8 +315,8 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Completed"
-          value={stats.completed}
-          change={`${stats.completionRate}%`}
+          value={dashboardStats.completed}
+          change={`${dashboardStats.completionRate}%`}
           changeType="positive"
           icon={CheckCircle2}
           color="#10b981"
@@ -274,7 +324,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="In Progress"
-          value={stats.inProgress}
+          value={dashboardStats.inProgress}
           change="Active"
           changeType="neutral"
           icon={Clock}
@@ -283,7 +333,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Streak"
-          value={`${stats.streak} days`}
+          value={`${dashboardStats.streak} days`}
           change="Keep it up!"
           changeType="positive"
           icon={Flame}
@@ -303,66 +353,91 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+              <motion.span
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="w-2 h-2 rounded-full bg-purple-400"
+              />
               Today&apos;s Focus
-              <span className="text-sm font-normal text-foreground-muted">
+              <motion.span 
+                key={todayTasks.length}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-sm font-normal text-foreground-muted"
+              >
                 ({todayTasks.length} tasks)
-              </span>
+              </motion.span>
             </h2>
-            <button className="btn-secondary text-sm">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="btn-secondary text-sm"
+            >
               <Target className="w-4 h-4 inline mr-2" />
               Focus Mode
-            </button>
+            </motion.button>
           </div>
 
-          <div className="space-y-2">
-            {todayTasks.length > 0 ? (
-              todayTasks.map((task, index) => (
-                <TodayTaskItem
-                  key={task.id}
-                  task={task}
-                  onDone={handleTaskDone}
-                  onNotToday={handleTaskNotToday}
-                  onFailure={handleTaskFailure}
-                  delay={0.1 * index}
-                />
-              ))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="glass rounded-xl p-8 text-center"
-              >
-                <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-400" />
-                </div>
-                <p className="text-foreground-muted mb-2">All caught up!</p>
-                <p className="text-sm text-foreground-muted">
-                  You have no tasks due today. Enjoy your day!
-                </p>
-              </motion.div>
-            )}
-          </div>
+          <AnimatePresence mode="popLayout">
+            <div className="space-y-2">
+              {todayTasks.length > 0 ? (
+                todayTasks.map((task, index) => (
+                  <TodayTaskItem
+                    key={task.id}
+                    task={task}
+                    onDone={handleTaskDone}
+                    onNotToday={handleTaskNotToday}
+                    onFailure={handleTaskFailure}
+                    delay={0.1 * index}
+                  />
+                ))
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="glass rounded-xl p-8 text-center"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
+                    className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4"
+                  >
+                    <CheckCircle2 className="w-8 h-8 text-green-400" />
+                  </motion.div>
+                  <p className="text-foreground-muted mb-2">All caught up!</p>
+                  <p className="text-sm text-foreground-muted">
+                    You have no tasks due today. Enjoy your day!
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          </AnimatePresence>
 
           {/* Progress Bar */}
           {todayTasks.length > 0 && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
               className="glass rounded-xl p-4"
             >
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-foreground-muted">Daily Progress</span>
-                <span className="font-medium">
-                  {tasks.filter((t) => t.status === "done" && t.columnId === "col_daily").length} / {todayTasks.length}
-                </span>
+                <motion.span 
+                  key={completedTodayTasks}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  className="font-medium"
+                >
+                  {completedTodayTasks} / {todayTasks.length}
+                </motion.span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${(tasks.filter((t) => t.status === "done" && t.columnId === "col_daily").length / todayTasks.length) * 100}%` }}
-                  transition={{ delay: 1, duration: 0.8 }}
+                  animate={{ width: `${progressPercentage}%` }}
+                  transition={{ delay: 1, duration: 0.8, ease: "easeOut" }}
                   className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
                 />
               </div>
@@ -377,6 +452,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 }}
+            whileHover={{ scale: 1.01 }}
             className="glass-card rounded-2xl p-6"
           >
             <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -384,64 +460,70 @@ export default function DashboardPage() {
               Quick Stats
             </h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <motion.div 
+                className="flex justify-between items-center"
+                whileHover={{ x: 4 }}
+              >
                 <span className="text-sm text-foreground-muted">Tasks Today</span>
-                <span className="font-medium">{todayTasks.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
+                <motion.span 
+                  key={todayTasks.length}
+                  initial={{ scale: 1.5 }}
+                  animate={{ scale: 1 }}
+                  className="font-medium"
+                >
+                  {todayTasks.length}
+                </motion.span>
+              </motion.div>
+              <motion.div 
+                className="flex justify-between items-center"
+                whileHover={{ x: 4 }}
+              >
                 <span className="text-sm text-foreground-muted">Completed</span>
                 <span className="font-medium text-green-400">
-                  {tasks.filter((t) => t.status === "done").length}
+                  {stats?.todayCompleted || 0}
                 </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-foreground-muted">Overdue</span>
-                <span className="font-medium text-red-400">
-                  {tasks.filter((t) => t.dueDate && t.dueDate < Date.now() && t.status !== "done").length}
+              </motion.div>
+              <motion.div 
+                className="flex justify-between items-center"
+                whileHover={{ x: 4 }}
+              >
+                <span className="text-sm text-foreground-muted">Created Today</span>
+                <span className="font-medium text-blue-400">
+                  {stats?.todayCreated || 0}
                 </span>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
 
-          {/* Recent Activity */}
+          {/* Streak Card */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.7 }}
-            className="space-y-4"
+            whileHover={{ scale: 1.02 }}
+            className="glass-card rounded-2xl p-6 relative overflow-hidden"
           >
-            <h2 className="text-xl font-semibold">Recent Activity</h2>
-            <div className="glass-card rounded-2xl p-4 space-y-4">
-              {taskHistory.slice(0, 5).map((history, index) => {
-                const task = tasks.find((t) => t.id === history.taskId);
-                const user = mockData.users.find((u) => u.id === history.performedBy);
-                return (
-                  <motion.div
-                    key={history.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.8 + index * 0.1 }}
-                    className="flex gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-xs font-medium shrink-0">
-                      {user?.avatar || "U"}
-                    </div>
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-medium">{user?.name}</span>{" "}
-                        {history.action === "moved" ? "moved" : history.action}{" "}
-                        <span className="font-medium text-purple-400">{task?.title}</span>
-                      </p>
-                      <p className="text-xs text-foreground-muted">
-                        {new Date(history.performedAt).toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/10"
+              animate={{ opacity: [0.1, 0.2, 0.1] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+            />
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-3">
+                <motion.div
+                  animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
+                  transition={{ repeat: Infinity, duration: 2, repeatDelay: 1 }}
+                >
+                  <Flame className="w-8 h-8 text-amber-400" />
+                </motion.div>
+                <div>
+                  <p className="text-3xl font-bold">{dashboardStats.streak}</p>
+                  <p className="text-sm text-foreground-muted">Day Streak</p>
+                </div>
+              </div>
+              <p className="text-sm text-foreground-muted">
+                Keep completing tasks daily to maintain your streak!
+              </p>
             </div>
           </motion.div>
         </div>
@@ -452,9 +534,9 @@ export default function DashboardPage() {
         isOpen={!!celebrationTask}
         onClose={() => setCelebrationTask(null)}
         taskTitle={celebrationTask?.title || ""}
-        streak={stats.streak}
-        totalCompleted={stats.completed}
-        mode="meme"
+        streak={dashboardStats.streak}
+        totalCompleted={dashboardStats.completed}
+        mode={memeMode ? "meme" : "default"}
       />
 
       <DoneModal

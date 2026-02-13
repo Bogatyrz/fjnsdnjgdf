@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Task, Priority, TaskStatus } from "@/lib/types";
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, MoreHorizontal } from "lucide-react";
 
 interface KanbanTaskCardProps {
   task: Task;
@@ -59,35 +59,57 @@ export function KanbanTaskCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ 
+        delay: index * 0.05,
+        duration: 0.2,
+        layout: { duration: 0.2 }
+      }}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onClick}
+      whileHover={{ 
+        scale: 1.02, 
+        y: -2,
+        transition: { duration: 0.15 }
+      }}
+      whileTap={{ scale: 0.98 }}
       className={`
         glass rounded-xl p-3 cursor-pointer group relative
-        hover:scale-[1.02] hover:bg-white/5
-        transition-all duration-200
+        transition-colors duration-200
         ${isDragging ? "opacity-50 rotate-2" : ""}
         ${isOverdue ? "border-l-2 border-l-red-500" : ""}
-        ${isDailyBase ? "bg-purple-500/5" : ""}
+        ${isDailyBase ? "bg-purple-500/5 hover:bg-purple-500/10" : "hover:bg-white/5"}
       `}
     >
       {/* Priority Indicator Bar */}
-      <div
+      <motion.div
         className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
         style={{ backgroundColor: priority.color }}
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={{ delay: index * 0.05 + 0.1 }}
       />
 
       {/* Quick Actions Overlay */}
       <motion.div
         initial={false}
-        animate={{ opacity: showActions ? 1 : 0 }}
+        animate={{ 
+          opacity: showActions ? 1 : 0,
+          y: showActions ? 0 : 10
+        }}
+        transition={{ duration: 0.15 }}
         className="absolute inset-0 bg-background/95 backdrop-blur-sm rounded-xl flex items-center justify-center gap-2 z-10"
+        onClick={(e) => e.stopPropagation()}
       >
         {onDone && (
-          <button
+          <motion.button
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={(e) => {
               e.stopPropagation();
               onDone();
@@ -96,10 +118,14 @@ export function KanbanTaskCard({
             title="Mark as Done"
           >
             <CheckCircle className="w-5 h-5" />
-          </button>
+          </motion.button>
         )}
         {onNotToday && (
-          <button
+          <motion.button
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={(e) => {
               e.stopPropagation();
               onNotToday();
@@ -108,10 +134,14 @@ export function KanbanTaskCard({
             title="Not Today"
           >
             <Clock className="w-5 h-5" />
-          </button>
+          </motion.button>
         )}
         {onFailure && (
-          <button
+          <motion.button
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={(e) => {
               e.stopPropagation();
               onFailure();
@@ -120,9 +150,13 @@ export function KanbanTaskCard({
             title="Having Trouble"
           >
             <AlertCircle className="w-5 h-5" />
-          </button>
+          </motion.button>
         )}
-        <button
+        <motion.button
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={(e) => {
             e.stopPropagation();
             onClick();
@@ -130,18 +164,18 @@ export function KanbanTaskCard({
           className="p-2 rounded-lg bg-white/10 text-foreground hover:bg-white/20 transition-colors"
           title="Open Details"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-        </button>
+          <MoreHorizontal className="w-5 h-5" />
+        </motion.button>
       </motion.div>
 
       {/* Content */}
       <div className="pl-3">
         {/* Priority & Tags */}
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span
+          <motion.span
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.05 + 0.1 }}
             className="text-xs font-medium px-2 py-0.5 rounded-full"
             style={{
               backgroundColor: priority.bg,
@@ -149,34 +183,51 @@ export function KanbanTaskCard({
             }}
           >
             {priority.label}
-          </span>
+          </motion.span>
 
-          {task.tags?.slice(0, 2).map((tag) => (
-            <span
+          {task.tags?.slice(0, 2).map((tag, tagIndex) => (
+            <motion.span
               key={tag}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 + 0.15 + tagIndex * 0.05 }}
               className="text-xs text-foreground-muted bg-white/5 px-2 py-0.5 rounded-full"
             >
               {tag}
-            </span>
+            </motion.span>
           ))}
 
           {task.tags && task.tags.length > 2 && (
-            <span className="text-xs text-foreground-muted">
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-foreground-muted"
+            >
               +{task.tags.length - 2}
-            </span>
+            </motion.span>
           )}
         </div>
 
         {/* Title */}
-        <h4 className="font-medium text-sm mb-2 line-clamp-2 group-hover:text-purple-400 transition-colors">
+        <motion.h4 
+          className="font-medium text-sm mb-2 line-clamp-2 group-hover:text-purple-400 transition-colors"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: index * 0.05 + 0.1 }}
+        >
           {task.title}
-        </h4>
+        </motion.h4>
 
         {/* Description Preview */}
         {task.description && (
-          <p className="text-xs text-foreground-muted line-clamp-2 mb-3">
+          <motion.p 
+            className="text-xs text-foreground-muted line-clamp-2 mb-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: index * 0.05 + 0.15 }}
+          >
             {task.description}
-          </p>
+          </motion.p>
         )}
 
         {/* Footer */}
@@ -184,7 +235,10 @@ export function KanbanTaskCard({
           {/* Left: Due Date & Status */}
           <div className="flex items-center gap-2">
             {task.dueDate && (
-              <div
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: index * 0.05 + 0.2 }}
                 className={`flex items-center gap-1 text-xs ${
                   isOverdue
                     ? "text-red-400"
@@ -200,26 +254,36 @@ export function KanbanTaskCard({
                     day: "numeric",
                   })}
                 </span>
-              </div>
+              </motion.div>
             )}
 
             {task.status === "in_progress" && (
-              <div className="flex items-center gap-1 text-xs text-blue-400">
+              <motion.div 
+                className="flex items-center gap-1 text-xs text-blue-400"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              >
                 <Clock className="w-3 h-3" />
                 <span>Active</span>
-              </div>
+              </motion.div>
             )}
           </div>
 
           {/* Right: Assignee */}
-          <div className="flex items-center gap-2">
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.05 + 0.25 }}
+          >
             {task.assignee ? (
-              <div
+              <motion.div
                 className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-medium"
                 title={task.assignee.name}
+                whileHover={{ scale: 1.2 }}
               >
                 {task.assignee.avatar}
-              </div>
+              </motion.div>
             ) : (
               <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
                 <svg
@@ -237,17 +301,29 @@ export function KanbanTaskCard({
                 </svg>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* Recurrence Indicator */}
         {task.recurrence && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-purple-400">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <motion.div 
+            className="mt-2 flex items-center gap-1 text-xs text-purple-400"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 + 0.3 }}
+          >
+            <motion.svg 
+              className="w-3 h-3" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            </motion.svg>
             <span className="capitalize">{task.recurrence}</span>
-          </div>
+          </motion.div>
         )}
       </div>
     </motion.div>

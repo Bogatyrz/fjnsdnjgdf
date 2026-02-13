@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Task, Column, DragItem } from "@/lib/types";
-import { KanbanColumn } from "./KanbanColumn";
+import { Task, Column } from "@/lib/types";
 import { KanbanTaskCard } from "./KanbanTaskCard";
 import { TaskDetailsModal } from "../modals/TaskDetailsModal";
 import { CelebrationModal } from "../modals/CelebrationModal";
 import { DoneModal, NotTodayModal, FailureModal } from "../modals/TaskActionModals";
-import { mockColumns, mockTasks, mockUsers, getUserById } from "@/lib/data/mock-data";
-import { Lock, AlertCircle } from "lucide-react";
+import { Lock, AlertCircle, Plus, Loader2 } from "lucide-react";
+import { useAllTasks, useMoveTask, useUpdateTask, useDeleteTask, useMarkTaskDone, useSkipTask, useHandleRecurrence } from "@/lib/hooks/useTasks";
+import { useAllColumns } from "@/lib/hooks/useColumns";
+import { useDashboardStats } from "@/lib/hooks/useAnalytics";
 
 // Strict mode drag drop context wrapper
 function StrictModeDroppable({ children, ...props }: React.ComponentProps<typeof Droppable>) {
@@ -22,8 +23,22 @@ function StrictModeDroppable({ children, ...props }: React.ComponentProps<typeof
 }
 
 export function KanbanBoard() {
-  const [columns] = useState<Column[]>(mockColumns.sort((a, b) => a.order - b.order));
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  // Convex queries
+  const columnsData = useAllColumns();
+  const tasksData = useAllTasks();
+  const stats = useDashboardStats();
+  
+  // Convex mutations
+  const moveTask = useMoveTask();
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
+  const markTaskDone = useMarkTaskDone();
+  const skipTask = useSkipTask();
+  const handleRecurrence = useHandleRecurrence();
+
+  // Local state
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [columns, setColumns] = useState<Column[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [celebrationTask, setCelebrationTask] = useState<Task | null>(null);
   const [actionModal, setActionModal] = useState<{
@@ -31,7 +46,22 @@ export function KanbanBoard() {
     task: Task | null;
   }>({ type: null, task: null });
   const [showWarning, setShowWarning] = useState<string | null>(null);
-  const [memeMode] = useState(true); // Could be loaded from user settings
+  const [memeMode, setMemeMode] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Sync Convex data with local state
+  useEffect(() => {
+    if (tasksData !== undefined) {
+      setTasks(tasksData as Task[]);
+      setIsLoading(false);
+    }
+  }, [tasksData]);
+
+  useEffect(() => {
+    if (columnsData !== undefined) {
+      setColumns((columnsData as Column[]).sort((a, b) => a.order - b.order));
+    }
+  }, [columnsData]);
 
   // Get Daily BASE column
   const dailyBaseColumn = useMemo(() => 
@@ -40,7 +70,7 @@ export function KanbanBoard() {
   );
 
   // Handle drag end
-  const handleDragEnd = useCallback((result: DropResult) => {
+  const handleDragEnd = useCallback(async (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
     // Dropped outside a droppable
@@ -60,21 +90,20 @@ export function KanbanBoard() {
     const sourceColumn = columns.find((c) => c.id === source.droppableId);
     const destColumn = columns.find((c) => c.id === destination.droppableId);
 
-    // Check Daily BASE restrictions
+    // Check Daily BASE restrictions - prevent dragging OUT of Daily BASE if locked
+    if (sourceColumn?.type === "daily" && sourceColumn?.locked && destination.droppableId !== source.droppableId) {
+      setShowWarning("Daily BASE column is locked - tasks cannot be moved out!");
+      setTimeout(() => setShowWarning(null), 3000);
+      return;
+    }
+
+    // Check if trying to drop into Daily BASE
     if (destColumn?.type === "daily" && destColumn?.locked) {
-      // Allow dropping into Daily BASE, but warn if not from allowed columns
-      if (sourceColumn?.type !== "daily") {
-        setShowWarning("Moving to Daily BASE - this will be your focus for today!");
-        setTimeout(() => setShowWarning(null), 3000);
-      }
+      setShowWarning("Task moved to Daily BASE - this is today's focus!");
+      setTimeout(() => setShowWarning(null), 3000);
     }
 
-    // Prevent dragging OUT of Daily BASE if locked (optional restriction)
-    if (sourceColumn?.type === "daily" && sourceColumn?.locked) {
-      // Allow dragging out, but maybe show a confirmation
-    }
-
-    // Update task
+    // Optimistically update local state
     const newStatus = getStatusFromColumn(destination.droppableId);
     
     setTasks((prev) =>
@@ -90,13 +119,26 @@ export function KanbanBoard() {
       )
     );
 
-    // If moved to Done column, show celebration
-    if (destination.droppableId === "col_done" && source.droppableId !== "col_done") {
-      setTimeout(() => {
-        setCelebrationTask(task);
-      }, 300);
+    // Call Convex mutation
+    try {
+      await moveTask({
+        taskId: draggableId as any,
+        targetColumnId: destination.droppableId as any,
+        newOrder: destination.index,
+      });
+
+      // If moved to Done column, show celebration
+      if (destination.droppableId === "col_done" && source.droppableId !== "col_done") {
+        setTimeout(() => {
+          setCelebrationTask(task);
+        }, 300);
+      }
+    } catch (error) {
+      console.error("Failed to move task:", error);
+      // Revert on error
+      setTasks(tasksData as Task[]);
     }
-  }, [tasks, columns]);
+  }, [tasks, columns, moveTask, tasksData]);
 
   const getStatusFromColumn = (columnId: string): Task["status"] => {
     switch (columnId) {
@@ -113,15 +155,33 @@ export function KanbanBoard() {
     setSelectedTask(task);
   }, []);
 
-  const handleTaskUpdate = useCallback((updatedTask: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
-    setSelectedTask(null);
-  }, []);
+  const handleTaskUpdate = useCallback(async (updatedTask: Task) => {
+    try {
+      await updateTask({
+        taskId: updatedTask.id as any,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        priority: updatedTask.priority,
+        status: updatedTask.status,
+        dueDate: updatedTask.dueDate,
+        tags: updatedTask.tags,
+        columnId: updatedTask.columnId as any,
+        assigneeId: updatedTask.assigneeId as any,
+      });
+      setSelectedTask(null);
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    }
+  }, [updateTask]);
 
-  const handleTaskDelete = useCallback((taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    setSelectedTask(null);
-  }, []);
+  const handleTaskDelete = useCallback(async (taskId: string) => {
+    try {
+      await deleteTask({ taskId: taskId as any });
+      setSelectedTask(null);
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+    }
+  }, [deleteTask]);
 
   // Task action handlers
   const handleTaskDone = useCallback((task: Task) => {
@@ -136,43 +196,62 @@ export function KanbanBoard() {
     setActionModal({ type: "failure", task });
   }, []);
 
-  const handleDoneConfirm = useCallback((recurrence?: string) => {
+  const handleDoneConfirm = useCallback(async (recurrence?: string) => {
     if (actionModal.task) {
-      // Update task status
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === actionModal.task!.id
-            ? { ...t, status: "done", columnId: "col_done" }
-            : t
-        )
-      );
-      
-      // Show celebration
-      setCelebrationTask(actionModal.task);
+      try {
+        // Mark task as done
+        await markTaskDone({ taskId: actionModal.task.id as any });
+        
+        // Handle recurrence if selected
+        if (recurrence && recurrence !== "none") {
+          await handleRecurrence({
+            taskId: actionModal.task.id as any,
+            recurrenceType: recurrence as "daily" | "weekly" | "monthly",
+          });
+        }
+        
+        // Show celebration
+        setCelebrationTask(actionModal.task);
+        setActionModal({ type: null, task: null });
+      } catch (error) {
+        console.error("Failed to complete task:", error);
+      }
+    }
+  }, [actionModal.task, markTaskDone, handleRecurrence]);
+
+  const handleNotTodayConfirm = useCallback(async (reason?: string) => {
+    if (actionModal.task) {
+      try {
+        await skipTask({
+          taskId: actionModal.task.id as any,
+          reason: reason || "Postponed",
+        });
+        setActionModal({ type: null, task: null });
+      } catch (error) {
+        console.error("Failed to skip task:", error);
+      }
+    }
+  }, [actionModal.task, skipTask]);
+
+  const handleFailureConfirm = useCallback(async (reason?: string) => {
+    if (actionModal.task) {
+      // Keep task in current state but could log the issue
       setActionModal({ type: null, task: null });
     }
   }, [actionModal.task]);
 
-  const handleNotTodayConfirm = useCallback((reason?: string) => {
-    if (actionModal.task) {
-      // Move task to backlog or update due date
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === actionModal.task!.id
-            ? { ...t, dueDate: Date.now() + 86400000 } // Tomorrow
-            : t
-        )
-      );
-      setActionModal({ type: null, task: null });
-    }
-  }, [actionModal.task]);
-
-  const handleFailureConfirm = useCallback((reason?: string) => {
-    if (actionModal.task) {
-      // Keep task in current state but log the issue
-      setActionModal({ type: null, task: null });
-    }
-  }, [actionModal.task]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        >
+          <Loader2 className="w-8 h-8 text-purple-400" />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -181,11 +260,13 @@ export function KanbanBoard() {
           {columns.map((column, columnIndex) => {
             const columnTasks = tasks
               .filter((task) => task.columnId === column.id)
-              .sort((a, b) => a.order - b.order)
-              .map((task) => ({
-                ...task,
-                assignee: task.assigneeId ? getUserById(task.assigneeId) : undefined,
-              }));
+              .sort((a, b) => {
+                // Auto-sort by deadline within column
+                if (a.dueDate && b.dueDate) {
+                  return a.dueDate - b.dueDate;
+                }
+                return a.order - b.order;
+              });
 
             const isDailyBase = column.type === "daily" && column.locked;
 
@@ -218,65 +299,95 @@ export function KanbanBoard() {
                           style={{ backgroundColor: column.color || "#64748b" }}
                         />
                         <h3 className="font-semibold">{column.title}</h3>
-                        <span className="text-xs text-foreground-muted bg-white/5 px-2 py-0.5 rounded-full">
+                        <motion.span 
+                          key={columnTasks.length}
+                          initial={{ scale: 0.8 }}
+                          animate={{ scale: 1 }}
+                          className="text-xs text-foreground-muted bg-white/5 px-2 py-0.5 rounded-full"
+                        >
                           {columnTasks.length}
-                        </span>
+                        </motion.span>
                         {isDailyBase && (
-                          <div
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400"
                             title="Daily BASE column - resets daily"
                           >
                             <Lock className="w-3 h-3" />
                             <span>Locked</span>
-                          </div>
+                          </motion.div>
                         )}
                       </div>
                     </div>
 
                     {/* Tasks Container */}
                     <div className="flex-1 p-3 space-y-2 overflow-y-auto min-h-[100px]">
-                      {columnTasks.map((task, index) => (
-                        <Draggable
-                          key={task.id}
-                          draggableId={task.id}
-                          index={index}
-                          isDragDisabled={false}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={provided.draggableProps.style}
-                            >
-                              <KanbanTaskCard
-                                task={task}
-                                index={index}
-                                columnId={column.id}
-                                onClick={() => handleTaskClick(task)}
-                                isDragging={snapshot.isDragging}
-                                onDone={() => handleTaskDone(task)}
-                                onNotToday={() => handleTaskNotToday(task)}
-                                onFailure={() => handleTaskFailure(task)}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                      <AnimatePresence mode="popLayout">
+                        {columnTasks.map((task, index) => (
+                          <Draggable
+                            key={task.id}
+                            draggableId={task.id}
+                            index={index}
+                            isDragDisabled={isDailyBase && column.locked}
+                          >
+                            {(provided, snapshot) => (
+                              <motion.div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                style={provided.draggableProps.style}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ delay: index * 0.05 }}
+                              >
+                                <KanbanTaskCard
+                                  task={task}
+                                  index={index}
+                                  columnId={column.id}
+                                  onClick={() => handleTaskClick(task)}
+                                  isDragging={snapshot.isDragging}
+                                  onDone={() => handleTaskDone(task)}
+                                  onNotToday={() => handleTaskNotToday(task)}
+                                  onFailure={() => handleTaskFailure(task)}
+                                />
+                              </motion.div>
+                            )}
+                          </Draggable>
+                        ))}
+                      </AnimatePresence>
                       {provided.placeholder}
 
                       {/* Empty State */}
-                      {columnTasks.length === 0 && (
-                        <div className="text-center py-8 text-foreground-muted text-sm">
-                          <p>No tasks yet</p>
-                          <p className="text-xs mt-1">Drag tasks here</p>
-                        </div>
-                      )}
+                      <AnimatePresence>
+                        {columnTasks.length === 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="text-center py-8 text-foreground-muted text-sm"
+                          >
+                            <motion.div
+                              animate={{ y: [0, -5, 0] }}
+                              transition={{ repeat: Infinity, duration: 2 }}
+                              className="text-2xl mb-2"
+                            >
+                              📝
+                            </motion.div>
+                            <p>No tasks yet</p>
+                            <p className="text-xs mt-1">Drag tasks here</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* Add Task Button */}
                     <div className="p-3 border-t border-white/10">
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         className={`
                           w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                           text-sm font-medium transition-all
@@ -286,11 +397,9 @@ export function KanbanBoard() {
                           }
                         `}
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
+                        <Plus className="w-4 h-4" />
                         Add Task
-                      </button>
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
@@ -303,19 +412,17 @@ export function KanbanBoard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: columns.length * 0.1 }}
-            className="shrink-0 w-72 h-full min-h-[200px] rounded-2xl border-2 border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 transition-all flex items-center justify-center group"
+            whileHover={{ scale: 1.02, borderColor: "rgba(255,255,255,0.2)" }}
+            whileTap={{ scale: 0.98 }}
+            className="shrink-0 w-72 h-full min-h-[200px] rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center group"
           >
             <div className="text-center">
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-2 group-hover:bg-white/10 transition-colors">
-                <svg
-                  className="w-6 h-6 text-foreground-muted"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
+              <motion.div 
+                className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-2 group-hover:bg-white/10 transition-colors"
+                whileHover={{ rotate: 90 }}
+              >
+                <Plus className="w-6 h-6 text-foreground-muted" />
+              </motion.div>
               <span className="text-sm text-foreground-muted">Add Column</span>
             </div>
           </motion.button>
@@ -326,15 +433,19 @@ export function KanbanBoard() {
       <AnimatePresence>
         {showWarning && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+            initial={{ opacity: 0, y: 50, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 50, x: "-50%" }}
+            className="fixed bottom-6 left-1/2 z-50"
           >
-            <div className="glass-card rounded-xl px-6 py-3 flex items-center gap-3 bg-amber-500/10 border-amber-500/30">
+            <motion.div 
+              className="glass-card rounded-xl px-6 py-3 flex items-center gap-3 bg-amber-500/10 border-amber-500/30"
+              animate={{ x: [0, -5, 5, -5, 0] }}
+              transition={{ duration: 0.5 }}
+            >
               <AlertCircle className="w-5 h-5 text-amber-400" />
               <span className="text-sm">{showWarning}</span>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -353,8 +464,8 @@ export function KanbanBoard() {
         isOpen={!!celebrationTask}
         onClose={() => setCelebrationTask(null)}
         taskTitle={celebrationTask?.title || ""}
-        streak={3} // Would come from analytics
-        totalCompleted={12}
+        streak={stats?.streak || 0}
+        totalCompleted={stats?.tasksCompleted || 0}
         mode={memeMode ? "meme" : "default"}
       />
 

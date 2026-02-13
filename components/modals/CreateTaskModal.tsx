@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Tag, User, Flag, Repeat, Loader2 } from "lucide-react";
 import { Priority, CreateTaskForm } from "@/lib/types";
-import { mockColumns, mockUsers } from "@/lib/data/mock-data";
+import { useAllColumns } from "@/lib/hooks/useColumns";
+import { mockUsers } from "@/lib/data/mock-data";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -20,17 +21,19 @@ const priorities: { value: Priority; label: string; color: string }[] = [
 ];
 
 const recurrenceOptions = [
-  { value: null, label: "No repeat", icon: X },
-  { value: "daily", label: "Daily", icon: Repeat },
-  { value: "weekly", label: "Weekly", icon: Calendar },
-  { value: "monthly", label: "Monthly", icon: Calendar },
+  { value: null as const, label: "No repeat", icon: X },
+  { value: "daily" as const, label: "Daily", icon: Repeat },
+  { value: "weekly" as const, label: "Weekly", icon: Calendar },
+  { value: "monthly" as const, label: "Monthly", icon: Calendar },
 ];
 
 export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: CreateTaskModalProps) {
+  const columns = useAllColumns();
+  
   const [formData, setFormData] = useState<CreateTaskForm>({
     title: "",
     description: "",
-    columnId: defaultColumnId || "col_daily",
+    columnId: defaultColumnId || "",
     priority: "medium",
     tags: [],
   });
@@ -39,6 +42,16 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
+
+  // Set default column when columns load
+  if (columns && !formData.columnId) {
+    const dailyBase = columns.find(c => c.type === "daily");
+    if (dailyBase) {
+      setFormData(prev => ({ ...prev, columnId: dailyBase._id }));
+    } else if (columns.length > 0) {
+      setFormData(prev => ({ ...prev, columnId: columns[0]._id }));
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +65,11 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
       }
       
       // Reset form
+      const dailyBase = columns?.find(c => c.type === "daily");
       setFormData({
         title: "",
         description: "",
-        columnId: defaultColumnId || "col_daily",
+        columnId: dailyBase?._id || columns?.[0]?._id || "",
         priority: "medium",
         tags: [],
       });
@@ -173,8 +187,8 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                   onChange={(e) => setFormData({ ...formData, columnId: e.target.value })}
                   className="input-glass"
                 >
-                  {mockColumns.map((col) => (
-                    <option key={col.id} value={col.id}>
+                  {columns?.map((col) => (
+                    <option key={col._id} value={col._id}>
                       {col.title} {col.locked ? "🔒" : ""}
                     </option>
                   ))}
@@ -239,7 +253,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                     type="button"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setRecurrence(option.value as typeof recurrence)}
+                    onClick={() => setRecurrence(option.value)}
                     className={`
                       flex flex-col items-center gap-1 p-3 rounded-xl text-sm transition-all
                       ${recurrence === option.value
@@ -272,7 +286,10 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                   type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
+                  onClick={() => setFormData({ ...formData, assigneeId: undefined })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
+                    !formData.assigneeId ? "bg-purple-500/20 text-purple-400" : "bg-white/5 hover:bg-white/10"
+                  }`}
                 >
                   <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs">
                     ?
@@ -285,7 +302,12 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                     type="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-purple-500/20 hover:border-purple-500/30 transition-all text-sm border border-transparent"
+                    onClick={() => setFormData({ ...formData, assigneeId: user.id })}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm border border-transparent ${
+                      formData.assigneeId === user.id 
+                        ? "bg-purple-500/20 border-purple-500/30" 
+                        : "bg-white/5 hover:bg-purple-500/10"
+                    }`}
                   >
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs">
                       {user.avatar}
@@ -340,6 +362,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
+                      layout
                       className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 text-sm"
                     >
                       {tag}

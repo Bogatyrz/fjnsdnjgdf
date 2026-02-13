@@ -1,11 +1,6 @@
 /* eslint-disable */
 /**
  * Generated `api` utility types.
- *
- * THIS CODE IS AUTOMATICALLY GENERATED.
- *
- * To regenerate, run `npx convex dev`.
- * @module
  */
 
 import type {
@@ -16,14 +11,14 @@ import type {
 
 /**
  * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
  */
 export declare const api: FilterApi<
-  ApiFromModules<{}>,
+  ApiFromModules<{
+    tasks: typeof import("../tasks");
+    columns: typeof import("../columns");
+    analytics: typeof import("../analytics");
+    seed: typeof import("../seed");
+  }>,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
