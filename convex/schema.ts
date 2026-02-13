@@ -34,6 +34,16 @@ export default defineSchema({
     dueDate: v.optional(v.number()),
     createdAt: v.number(),
     createdBy: v.string(),
+    // Recurrence support
+    recurrence: v.optional(v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.null()
+    )),
+    // For tracking task completion streak
+    streak: v.optional(v.number()),
+    lastCompletedAt: v.optional(v.number()),
   })
     .index("by_column", ["columnId"])
     .index("by_assignee", ["assigneeId"])
@@ -66,4 +76,14 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_date", ["date"]),
+
+  // User settings for meme mode
+  userSettings: defineTable({
+    userId: v.id("users"),
+    memeMode: v.optional(v.boolean()),
+    confettiEnabled: v.optional(v.boolean()),
+    selectedMemeImages: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
 });

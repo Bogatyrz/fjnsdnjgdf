@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { ConvexProvider } from "@/lib/providers/ConvexProvider";
+import { ConvexClientProvider } from "@/lib/providers/ConvexProvider";
 import { AppShell } from "@/components/AppShell";
 
 const inter = Inter({
@@ -33,9 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased bg-mesh">
-        <ConvexProvider>
+        <ConvexClientProvider>
           <AppShell>{children}</AppShell>
-        </ConvexProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   );

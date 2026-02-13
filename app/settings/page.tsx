@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Bell,
   Moon,
@@ -10,7 +11,23 @@ import {
   Palette,
   Zap,
   Save,
+  Sparkles,
+  PartyPopper,
+  Image,
 } from "lucide-react";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
 
 function SettingSection({
   title,
@@ -24,18 +41,25 @@ function SettingSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="glass-card rounded-2xl p-6">
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.005 }}
+      className="glass-card rounded-2xl p-6"
+    >
       <div className="flex items-start gap-4 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+        <motion.div
+          whileHover={{ rotate: 10 }}
+          className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0"
+        >
           <Icon className="w-5 h-5 text-purple-400" />
-        </div>
+        </motion.div>
         <div>
           <h3 className="font-semibold text-lg">{title}</h3>
           <p className="text-sm text-foreground-muted">{description}</p>
         </div>
       </div>
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -43,10 +67,12 @@ function Toggle({
   label,
   description,
   defaultChecked = false,
+  onChange,
 }: {
   label: string;
   description?: string;
   defaultChecked?: boolean;
+  onChange?: (checked: boolean) => void;
 }) {
   const [checked, setChecked] = useState(defaultChecked);
 
@@ -56,34 +82,69 @@ function Toggle({
         <p className="font-medium">{label}</p>
         {description && <p className="text-sm text-foreground-muted">{description}</p>}
       </div>
-      <button
-        onClick={() => setChecked(!checked)}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => {
+          const newValue = !checked;
+          setChecked(newValue);
+          onChange?.(newValue);
+        }}
         className={`
           w-12 h-6 rounded-full transition-colors relative
           ${checked ? "bg-purple-500" : "bg-white/10"}
         `}
       >
-        <span
-          className={`
-            absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
-            ${checked ? "left-7" : "left-1"}
-          `}
+        <motion.span
+          animate={{ x: checked ? 24 : 4 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="absolute top-1 w-4 h-4 rounded-full bg-white"
         />
-      </button>
+      </motion.button>
     </div>
   );
 }
 
+// Meme image options
+const memeImages = [
+  { id: "1", name: "Success Kid", preview: "👶" },
+  { id: "2", name: "Doge", preview: "🐕" },
+  { id: "3", name: "Pepe", preview: "🐸" },
+  { id: "4", name: "Cat Thumbs Up", preview: "👍" },
+];
+
 export default function SettingsPage() {
+  const [memeMode, setMemeMode] = useState(true);
+  const [confettiEnabled, setConfettiEnabled] = useState(true);
+  const [selectedMemes, setSelectedMemes] = useState<string[]>(["1", "2"]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    // Simulate saving
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsSaving(false);
+  };
+
+  const toggleMeme = (id: string) => {
+    setSelectedMemes((prev) =>
+      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
+    );
+  };
+
   return (
-    <div className="space-y-8 max-w-4xl">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8 max-w-4xl"
+    >
       {/* Header */}
-      <div>
+      <motion.div variants={itemVariants}>
         <h1 className="text-3xl font-bold mb-1">Settings</h1>
         <p className="text-foreground-muted">
           Manage your account and application preferences
         </p>
-      </div>
+      </motion.div>
 
       {/* Settings Grid */}
       <div className="space-y-6">
@@ -111,6 +172,68 @@ export default function SettingsPage() {
               description="Enable smooth transitions and animations"
               defaultChecked={true}
             />
+          </div>
+        </SettingSection>
+
+        {/* Celebration & Meme Mode */}
+        <SettingSection
+          title="Celebration & Memes"
+          description="Customize your task completion celebrations"
+          icon={PartyPopper}
+        >
+          <div className="space-y-4">
+            <Toggle
+              label="Meme Mode"
+              description="Show celebration memes when completing tasks"
+              defaultChecked={memeMode}
+              onChange={setMemeMode}
+            />
+            <div className="border-t border-white/10" />
+            <Toggle
+              label="Confetti Effects"
+              description="Celebrate with confetti on task completion"
+              defaultChecked={confettiEnabled}
+              onChange={setConfettiEnabled}
+            />
+            
+            {/* Meme Selection */}
+            {memeMode && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="pt-4"
+              >
+                <label className="block text-sm font-medium mb-3">
+                  <span className="flex items-center gap-2">
+                    <Image className="w-4 h-4" />
+                    Select Meme Images
+                  </span>
+                </label>
+                <div className="grid grid-cols-4 gap-3">
+                  {memeImages.map((meme) => (
+                    <motion.button
+                      key={meme.id}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => toggleMeme(meme.id)}
+                      className={`
+                        p-4 rounded-xl text-center transition-all
+                        ${selectedMemes.includes(meme.id)
+                          ? "bg-purple-500/20 border-2 border-purple-500/50"
+                          : "glass-hover border-2 border-transparent"
+                        }
+                      `}
+                    >
+                      <div className="text-3xl mb-2">{meme.preview}</div>
+                      <div className="text-xs text-foreground-muted">{meme.name}</div>
+                    </motion.button>
+                  ))}
+                </div>
+                <p className="text-xs text-foreground-muted mt-2">
+                  Selected memes will be shown randomly when you complete tasks
+                </p>
+              </motion.div>
+            )}
           </div>
         </SettingSection>
 
@@ -169,7 +292,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="pt-2">
-              <button className="text-sm text-purple-400 hover:text-purple-300">
+              <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
                 Change Password
               </button>
             </div>
@@ -194,9 +317,13 @@ export default function SettingsPage() {
               defaultChecked={true}
             />
             <div className="border-t border-white/10" />
-            <button className="text-red-400 hover:text-red-300 text-sm">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="text-red-400 hover:text-red-300 text-sm"
+            >
               Delete Account
-            </button>
+            </motion.button>
           </div>
         </SettingSection>
 
@@ -239,13 +366,17 @@ export default function SettingsPage() {
               { name: "Slack", connected: true },
               { name: "GitHub", connected: false },
               { name: "Google Calendar", connected: true },
+              { name: "Notion", connected: false },
             ].map((integration) => (
-              <div
+              <motion.div
                 key={integration.name}
+                whileHover={{ x: 4 }}
                 className="flex items-center justify-between py-2"
               >
                 <span className="font-medium">{integration.name}</span>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   className={`
                     px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                     ${
@@ -256,20 +387,38 @@ export default function SettingsPage() {
                   `}
                 >
                   {integration.connected ? "Connected" : "Connect"}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             ))}
           </div>
         </SettingSection>
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t border-white/10">
-        <button className="btn-primary flex items-center gap-2">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </button>
-      </div>
-    </div>
+      <motion.div
+        variants={itemVariants}
+        className="flex justify-end pt-6 border-t border-white/10"
+      >
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleSave}
+          disabled={isSaving}
+          className="btn-primary flex items-center gap-2"
+        >
+          {isSaving ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
+              <Sparkles className="w-4 h-4" />
+            </motion.div>
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {isSaving ? "Saving..." : "Save Changes"}
+        </motion.button>
+      </motion.div>
+    </motion.div>
   );
 }
