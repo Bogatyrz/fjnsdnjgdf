@@ -42,7 +42,7 @@ export function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
     try {
       // Find Daily BASE column as default
       const dailyBaseColumn = columns?.find(c => c.type === "daily");
-      const targetColumnId = taskData.columnId || dailyBaseColumn?._id;
+      const targetColumnId = taskData.columnId || dailyBaseColumn?.id;
 
       if (!targetColumnId) {
         console.error("No column found for task");
