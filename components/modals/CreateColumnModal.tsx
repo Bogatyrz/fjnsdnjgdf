@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Palette, Lock, Loader2 } from "lucide-react";
+import { useDailyBaseColumn } from "@/lib/hooks/useColumns";
 
 interface CreateColumnModalProps {
   isOpen: boolean;
@@ -30,12 +31,21 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
   const [selectedColor, setSelectedColor] = useState("#8b5cf6");
   const [columnType, setColumnType] = useState<"daily" | "custom">("custom");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Check if Daily BASE already exists
+  const existingDailyBase = useDailyBaseColumn();
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || isSubmitting) return;
+
+    // Prevent creating multiple Daily BASE columns
+    if (columnType === "daily" && existingDailyBase) {
+      alert("Daily BASE column already exists!");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -56,6 +66,8 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
       setIsSubmitting(false);
     }
   };
+
+  const canCreateDailyBase = !existingDailyBase;
 
   return (
     <AnimatePresence>
@@ -86,7 +98,7 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             <h2 className="text-xl font-semibold">Create New Column</h2>
             <motion.button
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.1, rotate: 90 }}
               whileTap={{ scale: 0.9 }}
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-white/5 transition-colors"
@@ -125,9 +137,9 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
               <div className="grid grid-cols-2 gap-3">
                 <motion.button
                   type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setColumnType("custom")}
+                  whileHover={{ scale: canCreateDailyBase ? 1.02 : 1 }}
+                  whileTap={{ scale: canCreateDailyBase ? 0.98 : 1 }}
+                  onClick={() => canCreateDailyBase && setColumnType("custom")}
                   className={`
                     p-4 rounded-xl text-left transition-all
                     ${columnType === "custom"
@@ -141,11 +153,13 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
                 </motion.button>
                 <motion.button
                   type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setColumnType("daily")}
+                  whileHover={{ scale: canCreateDailyBase ? 1.02 : 1 }}
+                  whileTap={{ scale: canCreateDailyBase ? 0.98 : 1 }}
+                  onClick={() => canCreateDailyBase && setColumnType("daily")}
+                  disabled={!canCreateDailyBase}
                   className={`
                     p-4 rounded-xl text-left transition-all relative
+                    ${!canCreateDailyBase ? "opacity-50 cursor-not-allowed" : ""}
                     ${columnType === "daily"
                       ? "bg-amber-500/20 border border-amber-500/50"
                       : "glass-hover border border-transparent"
@@ -156,7 +170,9 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
                     <Lock className="w-4 h-4 text-amber-400" />
                     <span className="font-medium">Daily BASE</span>
                   </div>
-                  <div className="text-xs text-foreground-muted">Resets daily, locked</div>
+                  <div className="text-xs text-foreground-muted">
+                    {canCreateDailyBase ? "Resets daily, locked" : "Already exists"}
+                  </div>
                 </motion.button>
               </div>
             </motion.div>
@@ -225,7 +241,13 @@ export function CreateColumnModal({ isOpen, onClose, onCreate }: CreateColumnMod
                     0
                   </span>
                   {columnType === "daily" && (
-                    <span className="text-xs text-amber-400">🔒</span>
+                    <motion.span 
+                      className="text-xs text-amber-400"
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      🔒
+                    </motion.span>
                   )}
                 </div>
                 <div className="space-y-2">

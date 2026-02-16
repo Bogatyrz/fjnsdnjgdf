@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { Plus, Filter, MoreHorizontal, Sparkles } from "lucide-react";
+import { Plus, Filter, MoreHorizontal, Sparkles, Loader2 } from "lucide-react";
 import { CreateColumnModal } from "@/components/modals/CreateColumnModal";
+import { useCreateColumn } from "@/lib/hooks/useColumns";
 
 export default function KanbanPage() {
   const [isCreateColumnOpen, setIsCreateColumnOpen] = useState(false);
@@ -15,9 +16,19 @@ export default function KanbanPage() {
     dueDate?: string;
   }>({});
 
-  const handleCreateColumn = (column: { title: string; color: string; type: "daily" | "custom" }) => {
-    // In a real app, this would call the Convex mutation
-    console.log("Creating column:", column);
+  const createColumn = useCreateColumn();
+
+  const handleCreateColumn = async (column: { title: string; color: string; type: "daily" | "custom" }) => {
+    try {
+      await createColumn({
+        title: column.title,
+        color: column.color,
+        type: column.type,
+      });
+      setIsCreateColumnOpen(false);
+    } catch (error) {
+      console.error("Failed to create column:", error);
+    }
   };
 
   return (
@@ -62,7 +73,11 @@ export default function KanbanPage() {
             <Filter className="w-4 h-4" />
             <span className="hidden sm:inline">Filter</span>
             {Object.keys(activeFilter).length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-purple-400" />
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="w-2 h-2 rounded-full bg-purple-400"
+              />
             )}
           </motion.button>
 
@@ -94,72 +109,74 @@ export default function KanbanPage() {
       </motion.div>
 
       {/* Filter Bar (collapsible) */}
-      <motion.div
-        initial={false}
-        animate={{
-          height: filterOpen ? "auto" : 0,
-          opacity: filterOpen ? 1 : 0,
-        }}
-        className="overflow-hidden"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: filterOpen ? 1 : 0, y: filterOpen ? 0 : -10 }}
-          className="glass-card rounded-xl p-4 mb-4"
-        >
-          <div className="flex flex-wrap items-center gap-4">
-            <div>
-              <label className="text-xs text-foreground-muted mb-1 block">Priority</label>
-              <select
-                value={activeFilter.priority || ""}
-                onChange={(e) => setActiveFilter({ ...activeFilter, priority: e.target.value || undefined })}
-                className="input-glass text-sm py-2"
-              >
-                <option value="">All Priorities</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-foreground-muted mb-1 block">Assignee</label>
-              <select
-                value={activeFilter.assignee || ""}
-                onChange={(e) => setActiveFilter({ ...activeFilter, assignee: e.target.value || undefined })}
-                className="input-glass text-sm py-2"
-              >
-                <option value="">All Assignees</option>
-                <option value="user_1">Alex Rivera</option>
-                <option value="user_2">Sarah Chen</option>
-                <option value="user_3">Jordan Smith</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-foreground-muted mb-1 block">Due Date</label>
-              <select
-                value={activeFilter.dueDate || ""}
-                onChange={(e) => setActiveFilter({ ...activeFilter, dueDate: e.target.value || undefined })}
-                className="input-glass text-sm py-2"
-              >
-                <option value="">All Dates</option>
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
-            <div className="ml-auto">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveFilter({})}
-                className="text-sm text-foreground-muted hover:text-foreground transition-colors"
-              >
-                Clear filters
-              </motion.button>
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
+      <AnimatePresence>
+        {filterOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <motion.div
+              initial={{ y: -10 }}
+              animate={{ y: 0 }}
+              className="glass-card rounded-xl p-4 mb-4"
+            >
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <label className="text-xs text-foreground-muted mb-1 block">Priority</label>
+                  <select
+                    value={activeFilter.priority || ""}
+                    onChange={(e) => setActiveFilter({ ...activeFilter, priority: e.target.value || undefined })}
+                    className="input-glass text-sm py-2"
+                  >
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-foreground-muted mb-1 block">Assignee</label>
+                  <select
+                    value={activeFilter.assignee || ""}
+                    onChange={(e) => setActiveFilter({ ...activeFilter, assignee: e.target.value || undefined })}
+                    className="input-glass text-sm py-2"
+                  >
+                    <option value="">All Assignees</option>
+                    <option value="user_1">Alex Rivera</option>
+                    <option value="user_2">Sarah Chen</option>
+                    <option value="user_3">Jordan Smith</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-foreground-muted mb-1 block">Due Date</label>
+                  <select
+                    value={activeFilter.dueDate || ""}
+                    onChange={(e) => setActiveFilter({ ...activeFilter, dueDate: e.target.value || undefined })}
+                    className="input-glass text-sm py-2"
+                  >
+                    <option value="">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                </div>
+                <div className="ml-auto">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setActiveFilter({})}
+                    className="text-sm text-foreground-muted hover:text-foreground transition-colors"
+                  >
+                    Clear filters
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Kanban Board */}
       <div className="flex-1 min-h-0">
