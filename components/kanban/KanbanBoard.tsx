@@ -8,8 +8,9 @@ import { KanbanTaskCard } from "./KanbanTaskCard";
 import { TaskDetailsModal } from "../modals/TaskDetailsModal";
 import { CelebrationModal } from "../modals/CelebrationModal";
 import { DoneModal, NotTodayModal, FailureModal } from "../modals/TaskActionModals";
+import { CreateTaskModal } from "../modals/CreateTaskModal";
 import { Lock, AlertCircle, Plus, Loader2 } from "lucide-react";
-import { useAllTasks, useMoveTask, useUpdateTask, useDeleteTask, useMarkTaskDone, useSkipTask, useHandleRecurrence } from "@/lib/hooks/useTasks";
+import { useAllTasks, useMoveTask, useUpdateTask, useDeleteTask, useMarkTaskDone, useSkipTask, useHandleRecurrence, useCreateTask } from "@/lib/hooks/useTasks";
 import { useAllColumns } from "@/lib/hooks/useColumns";
 import { useDashboardStats } from "@/lib/hooks/useAnalytics";
 
@@ -35,6 +36,7 @@ export function KanbanBoard() {
   const markTaskDone = useMarkTaskDone();
   const skipTask = useSkipTask();
   const handleRecurrence = useHandleRecurrence();
+  const createTask = useCreateTask();
 
   // Local state
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -48,6 +50,8 @@ export function KanbanBoard() {
   const [showWarning, setShowWarning] = useState<string | null>(null);
   const [memeMode, setMemeMode] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [createTaskColumnId, setCreateTaskColumnId] = useState<string>("");
 
   // Sync Convex data with local state
   useEffect(() => {
@@ -240,6 +244,36 @@ export function KanbanBoard() {
     }
   }, [actionModal.task]);
 
+  const handleCreateTask = useCallback(async (taskData: {
+    title: string;
+    description: string;
+    columnId: string;
+    priority: "low" | "medium" | "high";
+    dueDate?: Date;
+    tags: string[];
+    assigneeId?: string;
+    recurrence?: "daily" | "weekly" | "monthly" | null;
+  }) => {
+    try {
+      await createTask({
+        title: taskData.title,
+        description: taskData.description,
+        columnId: taskData.columnId,
+        priority: taskData.priority,
+        dueDate: taskData.dueDate?.getTime(),
+        tags: taskData.tags,
+        assigneeId: taskData.assigneeId,
+      });
+    } catch (error) {
+      console.error("Failed to create task:", error);
+    }
+  }, [createTask]);
+
+  const openCreateTaskModal = useCallback((columnId: string) => {
+    setCreateTaskColumnId(columnId);
+    setIsCreateTaskOpen(true);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -388,6 +422,7 @@ export function KanbanBoard() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={() => openCreateTaskModal(column.id)}
                         className={`
                           w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                           text-sm font-medium transition-all
@@ -489,6 +524,13 @@ export function KanbanBoard() {
         onClose={() => setActionModal({ type: null, task: null })}
         task={actionModal.task}
         onConfirm={handleFailureConfirm}
+      />
+
+      <CreateTaskModal
+        isOpen={isCreateTaskOpen}
+        onClose={() => setIsCreateTaskOpen(false)}
+        defaultColumnId={createTaskColumnId}
+        onCreate={handleCreateTask}
       />
     </>
   );

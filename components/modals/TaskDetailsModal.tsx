@@ -54,7 +54,7 @@ export function TaskDetailsModal({
   const currentTask = editedTask || task;
   const priority = priorityConfig[currentTask.priority];
   const status = statusConfig[currentTask.status];
-  const column = columns?.find((c) => c._id === currentTask.columnId);
+  const column = columns?.find((c) => c.id === currentTask.columnId);
   const assignee = currentTask.assigneeId
     ? mockUsers.find((u) => u.id === currentTask.assigneeId)
     : null;

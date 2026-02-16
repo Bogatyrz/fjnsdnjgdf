@@ -47,9 +47,9 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
   if (columns && !formData.columnId) {
     const dailyBase = columns.find(c => c.type === "daily");
     if (dailyBase) {
-      setFormData(prev => ({ ...prev, columnId: dailyBase._id }));
+      setFormData(prev => ({ ...prev, columnId: dailyBase.id }));
     } else if (columns.length > 0) {
-      setFormData(prev => ({ ...prev, columnId: columns[0]._id }));
+      setFormData(prev => ({ ...prev, columnId: columns[0].id }));
     }
   }
 
@@ -69,7 +69,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
       setFormData({
         title: "",
         description: "",
-        columnId: dailyBase?._id || columns?.[0]?._id || "",
+        columnId: dailyBase?.id || columns?.[0]?.id || "",
         priority: "medium",
         tags: [],
       });
@@ -188,7 +188,7 @@ export function CreateTaskModal({ isOpen, onClose, defaultColumnId, onCreate }: 
                   className="input-glass"
                 >
                   {columns?.map((col) => (
-                    <option key={col._id} value={col._id}>
+                    <option key={col.id} value={col.id}>
                       {col.title} {col.locked ? "🔒" : ""}
                     </option>
                   ))}
