@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Task } from "@/lib/types";
-import { mockTasks, mockColumns, mockUsers } from "@/lib/data/mock-data";
+import { mockTasks, mockColumns } from "@/lib/data/mock-data";
 
 // Local state for mock data
 let tasksState = [...mockTasks];
@@ -68,6 +68,7 @@ export function useTasksByStatus(status: "todo" | "in_progress" | "done") {
 
 export function useOverdueTasks() {
   const tasks = useAllTasks();
+  // Calculate current time once to avoid calling during render
   const now = Date.now();
   return tasks.filter(t => t.dueDate && t.dueDate < now && t.status !== "done");
 }

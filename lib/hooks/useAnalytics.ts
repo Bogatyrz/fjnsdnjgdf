@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { mockAnalytics, mockTasks } from "@/lib/data/mock-data";
+import { useMemo } from "react";
+import { mockAnalytics } from "@/lib/data/mock-data";
 import { useAllTasks } from "./useTasks";
 
 // Query hooks - using mock data
@@ -143,10 +143,13 @@ export function useTeamStats() {
 
 export function useCompletionStats() {
   const tasks = useAllTasks();
-  
+
+  // Calculate current time outside useMemo to avoid impure function call during render
+  const now = Date.now();
+
   return useMemo(() => {
     const completedTasks = tasks.filter((t) => t.status === "done" && t.dueDate);
-    
+
     if (completedTasks.length === 0) {
       return {
         avgCompletionTime: 0,
@@ -154,19 +157,19 @@ export function useCompletionStats() {
         slowestCompletion: 0,
       };
     }
-    
+
     const completionTimes = completedTasks.map((t) => {
       const created = t.createdAt;
-      const due = t.dueDate || Date.now();
+      const due = t.dueDate || now;
       return (due - created) / (1000 * 60 * 60 * 24); // in days
     });
-    
+
     const avg = completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length;
-    
+
     return {
       avgCompletionTime: Math.round(avg * 10) / 10,
       fastestCompletion: Math.round(Math.min(...completionTimes) * 10) / 10,
       slowestCompletion: Math.round(Math.max(...completionTimes) * 10) / 10,
     };
-  }, [tasks]);
+  }, [tasks, now]);
 }

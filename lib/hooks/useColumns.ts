@@ -127,11 +127,12 @@ export function useResetDailyBase() {
     if (!dailyBase) return false;
 
     // Move incomplete tasks to backlog
-    const backlog = columnsState.find(c => c.title.toLowerCase().includes("todo"));
-    
+    // Note: backlog column lookup is prepared for future implementation
+    // const backlog = columnsState.find(c => c.title.toLowerCase().includes("todo"));
+
     // In a real app, we'd also archive/delete tasks here
     // For now, just return true to indicate success
-    
+
     notifyListeners();
     return true;
   }, []);
